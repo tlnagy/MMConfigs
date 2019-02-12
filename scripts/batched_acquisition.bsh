@@ -1,0 +1,69 @@
+import org.micromanager.PositionList;
+import org.micromanager.MultiStagePosition;
+import org.micromanager.data.Coords;
+import org.micromanager.data.Image;
+import org.micromanager.data.Datastore;
+import org.micromanager.data.Metadata;
+import org.micromanager.data.Metadata.MetadataBuilder;
+import org.micromanager.display.DisplayWindow;
+
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.nio.file.Paths;
+import java.io.File;
+
+PositionList pl = mm.positions().getPositionList();
+
+LinkedHashMap batchedPos = new LinkedHashMap();
+
+print("Batching positions by well");
+
+//iterate over all the positions and group them by well
+for (int p=0; p < pl.getNumberOfPositions(); p++) {
+	position = pl.getPosition(p);
+	positionDetails = position.getLabel().split("-Site_");
+
+	if (positionDetails.length < 2)
+		mm.scripter().message("All positions need to be generated using the HCS plugin");
+	
+	if (batchedPos.get(positionDetails[0]) == null) {
+		List poses = new ArrayList();
+		poses.add(position);
+		batchedPos.put(positionDetails[0], poses);
+	} else {
+		batchedPos.get(positionDetails[0]).add(position);
+	}
+}
+
+position = -1;
+for (well : batchedPos.entrySet()) {
+	wellLabel = well.getKey();
+	wellPositions = well.getValue();
+	++position;
+}
+
+settings = mm.acquisitions().getAcquisitionSettings();
+
+
+// Derive a new unique filename
+loc = new File(settings.root, settings.prefix);
+loc = mm.data().getUniqueSaveDirectory(loc.getPath());
+
+Datastore store = mm.data().createSinglePlaneTIFFSeriesDatastore(loc);
+DisplayWindow display = mm.displays().createDisplay(store);
+mm.displays().manage(store);
+Coords.CoordsBuilder builder = mm.data().getCoordsBuilder();
+builder.stagePosition(0).time(0).z(0).channel(0);
+
+Image image = mm.live().snap(false).get(0);
+image = image.copyAtCoords(builder.build());
+store.putImage(image);
+
+Thread.sleep(500);
+
+Image image = mm.live().snap(false).get(0);
+image = image.copyAtCoords(builder.time(1).build());
+store.putImage(image);
+
+
+//store.save(Datastore.SaveMode.SINGLEPLANE_TIFF_SERIES, loc.toString());
