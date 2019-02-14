@@ -1,3 +1,11 @@
+/*  Image positions in batches, i.e. introduce a hierarchy in the position 
+ *  list such that each batch of positions is imaged in parallel while batches 
+ *  themselves are imaged in series.
+ * 
+ *  Tamas Nagy, 2019
+ * 
+ */
+
 import org.micromanager.PositionList;
 import org.micromanager.MultiStagePosition;
 import org.micromanager.data.Coords;
@@ -6,10 +14,10 @@ import org.micromanager.data.Datastore;
 import org.micromanager.data.Metadata;
 import org.micromanager.data.Metadata.MetadataBuilder;
 import org.micromanager.display.DisplayWindow;
+import org.micromanager.acquisition.ChannelSpec;
 
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
-import java.nio.file.Paths;
 import java.io.File;
 
 PositionList pl = mm.positions().getPositionList();
@@ -45,6 +53,7 @@ for (well : batchedPos.entrySet()) {
 settings = mm.acquisitions().getAcquisitionSettings();
 
 
+
 // Derive a new unique filename
 loc = new File(settings.root, settings.prefix);
 loc = mm.data().getUniqueSaveDirectory(loc.getPath());
@@ -52,18 +61,30 @@ loc = mm.data().getUniqueSaveDirectory(loc.getPath());
 Datastore store = mm.data().createSinglePlaneTIFFSeriesDatastore(loc);
 DisplayWindow display = mm.displays().createDisplay(store);
 mm.displays().manage(store);
+
 Coords.CoordsBuilder builder = mm.data().getCoordsBuilder();
 builder.stagePosition(0).time(0).z(0).channel(0);
 
-Image image = mm.live().snap(false).get(0);
-image = image.copyAtCoords(builder.build());
-store.putImage(image);
+groupName = settings.channelGroup;
+channels = settings.channels;
 
-Thread.sleep(500);
+channelNum = -1;
+for (ChannelSpec channel : channels ) {
+	++channelNum;
+	if (!channel.useChannel) { continue; }
+	print(channel.config);
+	config = channel.config;
+	mmc.setExposure(channel.exposure);
+	mmc.setConfig(groupName, config);
+	mmc.waitForConfig(groupName, config);
+	print(channel.exposure);
 
-Image image = mm.live().snap(false).get(0);
-image = image.copyAtCoords(builder.time(1).build());
-store.putImage(image);
-
-
-//store.save(Datastore.SaveMode.SINGLEPLANE_TIFF_SERIES, loc.toString());
+	Image image = mm.live().snap(false).get(0);
+	image = image.copyAtCoords(builder.channel(channelNum).time(0).build());
+	store.putImage(image);
+	print("Done");
+	Thread.sleep(2000);
+	Image image = mm.live().snap(false).get(0);
+	image = image.copyAtCoords(builder.channel(channelNum).time(1).build());
+	store.putImage(image);
+}
