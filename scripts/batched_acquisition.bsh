@@ -12,7 +12,6 @@ import org.micromanager.data.Coords;
 import org.micromanager.data.Image;
 import org.micromanager.data.Datastore;
 import org.micromanager.data.Metadata;
-import org.micromanager.data.Metadata.MetadataBuilder;
 import org.micromanager.display.DisplayWindow;
 import org.micromanager.acquisition.ChannelSpec;
 
@@ -43,48 +42,95 @@ for (int p=0; p < pl.getNumberOfPositions(); p++) {
 	}
 }
 
-position = -1;
-for (well : batchedPos.entrySet()) {
-	wellLabel = well.getKey();
-	wellPositions = well.getValue();
-	++position;
-}
-
+// load settings from the acquisition panel
 settings = mm.acquisitions().getAcquisitionSettings();
-
-
 
 // Derive a new unique filename
 loc = new File(settings.root, settings.prefix);
 loc = mm.data().getUniqueSaveDirectory(loc.getPath());
 
+// setup image storage
 Datastore store = mm.data().createSinglePlaneTIFFSeriesDatastore(loc);
 DisplayWindow display = mm.displays().createDisplay(store);
 mm.displays().manage(store);
 
-Coords.CoordsBuilder builder = mm.data().getCoordsBuilder();
-builder.stagePosition(0).time(0).z(0).channel(0);
+// builders needed for image metadata
+Coords.CoordsBuilder coordBuilder = mm.data().getCoordsBuilder();
+Metadata.MetadataBuilder mdBuilder = mm.data().getMetadataBuilder();
+smdBuilder = mm.data().getSummaryMetadataBuilder();
 
-groupName = settings.channelGroup;
 channels = settings.channels;
+groupName = settings.channelGroup;
 
-channelNum = -1;
-for (ChannelSpec channel : channels ) {
-	++channelNum;
-	if (!channel.useChannel) { continue; }
-	print(channel.config);
-	config = channel.config;
-	mmc.setExposure(channel.exposure);
-	mmc.setConfig(groupName, config);
-	mmc.waitForConfig(groupName, config);
-	print(channel.exposure);
+long interval = (long) settings.intervalMs;
 
-	Image image = mm.live().snap(false).get(0);
-	image = image.copyAtCoords(builder.channel(channelNum).time(0).build());
-	store.putImage(image);
-	print("Done");
-	Thread.sleep(2000);
-	Image image = mm.live().snap(false).get(0);
-	image = image.copyAtCoords(builder.channel(channelNum).time(1).build());
-	store.putImage(image);
+snapManager = mm.live();
+
+batchNum = 0;
+// iterate over position batches
+for (batch : batchedPos.entrySet()) {
+	batchLabel = batch.getKey();
+	batchPositions = batch.getValue();
+	print("Imaging " + batchLabel);
+
+	// move to the first position in the batch before starting time course
+	startPos = batchPositions.get(0);
+	MultiStagePosition.goToPosition(startPos, mmc);
+
+	// iterate over time course
+	for (int t = 0; t < settings.numFrames; t++) {
+		
+		long start = System.currentTimeMillis();
+
+		// each position must have a unique index so we offset from the current
+		// batch number
+		positionNum = batchNum-1;
+		// iterate over positions in the position batch
+		for (pos : batchPositions) {
+			positionNum++;
+			posName = pos.getLabel();
+			x = pos.getX();
+			y = pos.getY();
+			print("Imaging position "+posName);
+			MultiStagePosition.goToPosition(pos, mmc);
+
+			channelNum = -1;
+			// iterate over all the channels
+			for (ChannelSpec channel : channels ) {
+				if (!channel.useChannel) { continue; }
+				++channelNum;
+				print(channel.config);
+				config = channel.config;
+				mmc.setExposure(channel.exposure);
+				mmc.setConfig(groupName, config);
+				mmc.waitForConfig(groupName, config);
+			
+				Image image = snapManager.snap(false).get(0);
+				metadata = mdBuilder.positionName(posName).xPositionUm(x).yPositionUm(y).build();
+				coords = coordBuilder.channel(channelNum).time(t).stagePosition(positionNum).build();
+				image = image.copyWith(coords, metadata);
+				store.putImage(image);
+			}
+		
+		}
+
+		
+
+		/* 
+		 *  WAIT TILL NEXT TIME POINT
+		 */
+		
+		long timediff = interval - (System.currentTimeMillis() - start);
+		// do not sleep for last time point
+		if (t+1 != settings.numFrames) {
+			if (timediff > 0) { 
+				Thread.sleep(timediff);
+			} else {
+				mm.scripter().message("Not enough time to batch images");
+			}
+		}	
+	}
+	batchNum += batchPositions.size();
 }
+
+store.freeze();
