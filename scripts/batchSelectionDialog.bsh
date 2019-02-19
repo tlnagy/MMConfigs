@@ -1,0 +1,123 @@
+/*
+ * Dialog for assigning positions to batches.
+ * 
+ * Tamas Nagy, 2019
+ */
+
+import java.util.ArrayList;
+import java.awt.Dimension;
+import java.awt.Component;
+import java.awt.event.MouseEvent;
+import javax.swing.JTable;
+import javax.swing.JLabel;
+import javax.swing.table.*;
+import javax.swing.text.JTextComponent;
+import javax.swing.SwingUtilies;
+
+import org.micromanager.internal.utils.MMDialog;
+import org.micromanager.PositionList;
+
+import net.miginfocom.swing.MigLayout;
+
+setupBatches(PositionList pl, mm){
+	
+	dlg = new MMDialog(mm.getFrame(), true);
+	dlg.setTitle("Position Batching");
+	dlg.setMinimumSize(new Dimension(275, 365));
+	dlg.setLocation(100, 100);
+	
+	n = pl.getNumberOfPositions();
+	
+	Object[][] rowData = new Object[n][3];
+	batchNum = 1;
+	for (int i = 0; i < n; i++) {
+		rowData[i][0] = pl.getPosition(i).getLabel();
+		rowData[i][1] = batchNum;
+		rowData[i][2] = false;
+		batchNum++;
+	}
+	
+	Object [] columnNames = new String[] { "Position", "Batch", "UV" };
+	DefaultTableModel model = new DefaultTableModel(){
+		public Class getColumnClass(int column) {
+	       switch (column) {
+	           case 0:
+	               return String.class;
+	           case 1:
+	               return Integer.class;
+	           default:
+	               return Boolean.class;
+	       }
+	   }
+	
+	   public boolean isCellEditable(int row, int column) {
+	        if (column == 0) { return false;}
+	        return true;
+	    }
+	};
+	// beanshell has a bug where inner classes can only be constructed with
+	// the default constructor so we add the data next.
+	model.setDataVector(rowData, columnNames);
+	table = new JTable(){
+		// shamelessly lifted from Rob Camick's answer here:
+		// https://stackoverflow.com/questions/33067595/how-do-i-simulate-onstartcellediting-for-defaultcelleditor/33067747#33067747
+	   public boolean editCellAt(int row, int column, EventObject e)
+		{
+			boolean result = super.editCellAt(row, column, e);
+			final Component editor = getEditorComponent();
+	
+	    	if (editor != null && editor instanceof JTextComponent)
+	    	{
+	        	((JTextComponent)editor).selectAll();
+	
+	        	if (e == null)
+	        	{
+	        		((JTextComponent)editor).selectAll();
+	        	}
+	        	else if (e instanceof MouseEvent)
+	        	{
+	         	SwingUtilities.invokeLater(new Runnable()
+	            {
+	            	public void run()
+	               {
+	               	((JTextComponent)editor).selectAll();
+	               }
+	            });
+	        	}
+	    	}
+	   return result;
+		}
+	};
+	table.setModel(model);
+	JLabel label = new JLabel("<html><p>Assign positions to batches "
+	              + "and whether to activate UV at this position</p></html>");
+	label.setPreferredSize(new Dimension(300, 20));
+	dlg.setLayout(new MigLayout("flowx"));
+	dlg.add(label,  "span 4, align center, wrap");
+	dlg.add(table, "span");
+	cancelled = false;
+	JButton okButton = new JButton("OK");
+	okButton.addActionListener(new ActionListener() {
+	  
+	   public void actionPerformed(ActionEvent event) {
+	      dlg.dispose();
+	   }
+	});
+	
+	dlg.getRootPane().setDefaultButton(okButton);
+	dlg.add(okButton, "tag ok, span 4, split");
+	
+	JButton cancelButton = new JButton("Cancel");
+	cancelButton.addActionListener(new ActionListener() {
+	      public void actionPerformed(ActionEvent event) {
+	         dlg.dispose();
+	         cancelled = true;
+	      }
+	});
+	dlg.add(cancelButton, "tag cancel");
+	dlg.setVisible(true);
+	if (cancelled) { return; }
+
+	data = table.getModel().getDataVector();
+	return data;
+}
