@@ -25,6 +25,11 @@ LinkedHashMap batchedPos = new LinkedHashMap();
 
 print("Batching positions by well");
 
+addClassPath("C:/Data/tamas/MMConfigs/scripts/");
+importCommands("/");
+data = batchSelectionDialog(pl, mm);
+if (data == -1) { return; }
+
 //iterate over all the positions and group them by well
 for (int p=0; p < pl.getNumberOfPositions(); p++) {
 	position = pl.getPosition(p);

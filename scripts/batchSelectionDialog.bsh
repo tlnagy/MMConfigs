@@ -19,7 +19,7 @@ import org.micromanager.PositionList;
 
 import net.miginfocom.swing.MigLayout;
 
-setupBatches(PositionList pl, mm){
+batchSelectionDialog(PositionList pl, mm){
 	
 	dlg = new MMDialog(mm.getFrame(), true);
 	dlg.setTitle("Position Batching");
@@ -110,13 +110,13 @@ setupBatches(PositionList pl, mm){
 	JButton cancelButton = new JButton("Cancel");
 	cancelButton.addActionListener(new ActionListener() {
 	      public void actionPerformed(ActionEvent event) {
-	         dlg.dispose();
 	         cancelled = true;
+	         dlg.dispose();
 	      }
 	});
 	dlg.add(cancelButton, "tag cancel");
 	dlg.setVisible(true);
-	if (cancelled) { return; }
+	if (cancelled) { return -1; }
 
 	data = table.getModel().getDataVector();
 	return data;
