@@ -35,6 +35,7 @@ for (int p=0; p < pl.getNumberOfPositions(); p++) {
 	position = pl.getPosition(p);
 	details = data.get(p);
 	batch = details.get(1); // the batch number this position corresponds to
+	position.setProperty("uv", ""+details.get(2)); // store whether to expose UV at this position
 	
 	if (batchedPos.get(batch) == null) {
 		List poses = new ArrayList();
@@ -48,7 +49,7 @@ for (int p=0; p < pl.getNumberOfPositions(); p++) {
 for (batch : batchedPos.entrySet()) {
 	print("Batch #"+batch.getKey());
 	for (position : batch.getValue()) {
-		print("\t"+position.getLabel());
+		print("\t"+position.getLabel()+"\t"+Boolean.valueOf(position.getProperty("uv")));
 	}
 }
 
