@@ -33,17 +33,22 @@ if (data == -1) { return; }
 //iterate over all the positions and group them by well
 for (int p=0; p < pl.getNumberOfPositions(); p++) {
 	position = pl.getPosition(p);
-	positionDetails = position.getLabel().split("-Site_");
-
-	if (positionDetails.length < 2)
-		mm.scripter().message("All positions need to be generated using the HCS plugin");
+	details = data.get(p);
+	batch = details.get(1); // the batch number this position corresponds to
 	
-	if (batchedPos.get(positionDetails[0]) == null) {
+	if (batchedPos.get(batch) == null) {
 		List poses = new ArrayList();
 		poses.add(position);
-		batchedPos.put(positionDetails[0], poses);
+		batchedPos.put(batch, poses);
 	} else {
-		batchedPos.get(positionDetails[0]).add(position);
+		batchedPos.get(batch).add(position);
+	}
+}
+
+for (batch : batchedPos.entrySet()) {
+	print("Batch #"+batch.getKey());
+	for (position : batch.getValue()) {
+		print("\t"+position.getLabel());
 	}
 }
 
