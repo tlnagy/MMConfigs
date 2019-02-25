@@ -15,11 +15,15 @@ import javax.swing.JLabel;
 import javax.swing.table.*;
 import javax.swing.text.JTextComponent;
 import javax.swing.SwingUtilies;
+import javax.swing.border.TitledBorder;
 
 import org.micromanager.internal.utils.MMDialog;
 import org.micromanager.PositionList;
 
 import net.miginfocom.swing.MigLayout;
+
+addClassPath("C:/Data/tamas/MMConfigs/scripts/");
+importCommands("/");
 
 batchSelectionDialog(PositionList pl, mm){
 	
@@ -96,7 +100,55 @@ batchSelectionDialog(PositionList pl, mm){
 	label.setPreferredSize(new Dimension(300, 20));
 	dlg.setLayout(new MigLayout("flowx"));
 	dlg.add(label,  "span 4, align center, wrap");
-	dlg.add(table, "span");
+	dlg.add(table, "newline 20px, span");
+
+	JPanel uvPanel = new JPanel();
+	uvPanel.setLayout(new MigLayout("fillx"));
+	uvPanel.setBorder(new TitledBorder("UV details"));
+
+	uvPanel.add(new JLabel("DAC port:"), "split");
+	dacEntry = new JTextField("DAC2");
+	uvPanel.add(dacEntry);
+
+	uvPanel.add(new JLabel("Power level (0.0-1.0):"), "newline, split");
+	power = new JTextField("0.1");
+	uvPanel.add(power);
+
+	uvPanel.add(new JLabel("Initial exposure (ms):"), "newline, split");
+	initialExposure = new JTextField("5000");
+	uvPanel.add(initialExposure);
+
+	uvPanel.add(new JLabel("Refresh exposure (ms):"), "newline, split");
+	refreshExposure = new JTextField("2000");
+	uvPanel.add(refreshExposure);
+
+	JButton testButton = new JButton("Test LED");
+	testButton.addActionListener(new ActionListener() {
+	  
+	   public void actionPerformed(ActionEvent event) {
+	   	dac_number = Character.getNumericValue(dacEntry.getText().charAt(3));
+	   	power_lvl = Double.valueOf(power.getText());
+	   	initial_ex =  Integer.valueOf(initialExposure.getText());
+	   	Runnable runnable = new Runnable() {
+				public void run() {
+	      		led_control("COM3", dac_number, power_lvl, initial_ex);
+	      		mm.scripter().displayMessage("LED test stopped");
+	      		testButton.setText("Test LED");
+	      		testButton.setEnabled(true);
+				}
+	   	};
+
+			testButton.setText("Exposing...");
+			testButton.setEnabled(false);
+			mm.scripter().displayMessage("LED test started...");
+	   	Thread thread = new Thread(runnable);
+	   	thread.start();
+	   }
+	});
+	uvPanel.add(testButton, "newline");
+
+	dlg.add(uvPanel, "newline 20px, growx");
+	
 	cancelled = false;
 	JButton okButton = new JButton("OK");
 	okButton.addActionListener(new ActionListener() {
@@ -113,7 +165,7 @@ batchSelectionDialog(PositionList pl, mm){
 	});
 	
 	dlg.getRootPane().setDefaultButton(okButton);
-	dlg.add(okButton, "tag ok, span 4, split");
+	dlg.add(okButton, "newline 20px, tag ok, split");
 	
 	JButton cancelButton = new JButton("Cancel");
 	cancelButton.addActionListener(new ActionListener() {
@@ -127,5 +179,11 @@ batchSelectionDialog(PositionList pl, mm){
 	if (cancelled) { return -1; }
 
 	data = table.getModel().getDataVector();
-	return data;
+	toReturn = new ArrayList();
+	toReturn.add(data);
+	toReturn.add(dacEntry.getText());
+	toReturn.add(power.getText());
+	toReturn.add(initialExposure.getText());
+	toReturn.add(refreshExposure.getText());
+	return toReturn;
 }
