@@ -12,19 +12,19 @@ import mmcorej.CharVector;
  *  
  *  Example:
  *  
- *  	deliverVoltage("COM3", 1, 0.5, 2000)
+ *  	led_control("COM3", 1, 0.5, 2000)
  *  
  *  will turn on DAC1 on COM3 for 2 seconds with 50% power
  */
-deliverVoltage(String port, int dacNumber, double voltage, int time) {
+led_control(String port, int dacNumber, double voltage, int time) {
 	long start = System.currentTimeMillis();
-	deliverVoltage(port, dacNumber, voltage);
+	led_control(port, dacNumber, voltage);
 	long timediff = time - (System.currentTimeMillis() - start);
 	Thread.sleep(timediff);
-	deliverVoltage(port, dacNumber, 0.0);
+	led_control(port, dacNumber, 0.0);
 }
 
-deliverVoltage(String port, int dacNumber, double voltage) {
+led_control(String port, int dacNumber, double voltage) {
 	CharVector = message = new CharVector();
 
 	command = "DAC"+dacNumber+", "+(int)(voltage*65535)+"\r\n";
