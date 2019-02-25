@@ -29,11 +29,15 @@ addClassPath("C:/Data/tamas/MMConfigs/scripts/");
 importCommands("/");
 data = batchSelectionDialog(pl, mm);
 if (data == -1) { return; }
+dac_number = Character.getNumericValue(data.get(1).charAt(3)); // extract DAC number from input, e.g. 2 from DAC2
+power_lvl = Double.valueOf(data.get(2)); // get power level
+initial_exposure = Integer.valueOf(data.get(3)); // get initial exposure time
+refresh_exposure = Integer.valueOf(data.get(4)); // get refresh exposure time
 
 //iterate over all the positions and group them by well
 for (int p=0; p < pl.getNumberOfPositions(); p++) {
 	position = pl.getPosition(p);
-	details = data.get(p);
+	details = data.get(0).get(p);
 	batch = details.get(1); // the batch number this position corresponds to
 	position.setProperty("uv", ""+details.get(2)); // store whether to expose UV at this position
 	
@@ -82,11 +86,21 @@ batchNum = 0;
 for (batch : batchedPos.entrySet()) {
 	batchLabel = batch.getKey();
 	batchPositions = batch.getValue();
-	print("Imaging " + batchLabel);
+	print("Imaging batch #" + batchLabel);
 
 	// move to the first position in the batch before starting time course
 	startPos = batchPositions.get(0);
 	MultiStagePosition.goToPosition(startPos, mmc);
+
+	/*
+	 * INITIAL EXPOSURE
+	 */
+	for (pos : batchPositions){
+		if (!Boolean.valueOf(pos.getProperty("uv"))) { continue; }
+		print("Exposing UV on "+pos.getLabel());
+		led_control("COM3", dac_number, power_lvl, initial_exposure);
+	}
+	
 
 	// iterate over time course
 	for (int t = 0; t < settings.numFrames; t++) {
@@ -110,7 +124,7 @@ for (batch : batchedPos.entrySet()) {
 			for (ChannelSpec channel : channels ) {
 				if (!channel.useChannel) { continue; }
 				++channelNum;
-				print(channel.config);
+				print("\tImaging channel: "+channel.config);
 				config = channel.config;
 				mmc.setExposure(channel.exposure);
 				mmc.setConfig(groupName, config);
@@ -125,6 +139,11 @@ for (batch : batchedPos.entrySet()) {
 		
 		}
 
+		for (pos : batchPositions){
+			if (!Boolean.valueOf(pos.getProperty("uv"))) { continue; }
+			print("Exposing UV on "+pos.getLabel());
+			led_control("COM3", dac_number, power_lvl, refresh_exposure);
+		}
 		
 
 		/* 
