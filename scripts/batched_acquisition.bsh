@@ -82,6 +82,7 @@ long interval = (long) settings.intervalMs;
 
 snapManager = mm.live();
 
+try{
 batchNum = 0;
 // iterate over position batches
 for (batch : batchedPos.entrySet()) {
@@ -161,5 +162,8 @@ for (batch : batchedPos.entrySet()) {
 	}
 	batchNum += batchPositions.size();
 }
-
-store.freeze();
+}
+finally {
+	print("Quit.");
+	mm.scripter().resetInterpreter();
+}
