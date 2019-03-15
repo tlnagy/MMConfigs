@@ -29,7 +29,7 @@ addClassPath("C:/Data/tamas/MMConfigs/scripts/");
 importCommands("/");
 data = batchSelectionDialog(pl, mm);
 if (data == -1) { return; }
-dac_number = Character.getNumericValue(data.get(1).charAt(3)); // extract DAC number from input, e.g. 2 from DAC2
+dac_number = data.get(1); // DAC
 power_lvl = Double.valueOf(data.get(2)); // get power level
 initial_exposure = Integer.valueOf(data.get(3)); // get initial exposure time
 refresh_exposure = Integer.valueOf(data.get(4)); // get refresh exposure time
