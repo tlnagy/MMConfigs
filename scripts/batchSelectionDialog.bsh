@@ -11,6 +11,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowAdapter;
 import javax.swing.JTable;
+import javax.swing.JScrollPane;
 import javax.swing.JLabel;
 import javax.swing.table.*;
 import javax.swing.text.JTextComponent;
@@ -29,7 +30,7 @@ batchSelectionDialog(PositionList pl, mm){
 	
 	dlg = new MMDialog(mm.getFrame(), true);
 	dlg.setTitle("Position Batching");
-	dlg.setMinimumSize(new Dimension(275, 365));
+	dlg.setMinimumSize(new Dimension(275, 500));
 	dlg.setLocation(100, 100);
 	
 	n = pl.getNumberOfPositions();
@@ -100,7 +101,7 @@ batchSelectionDialog(PositionList pl, mm){
 	label.setPreferredSize(new Dimension(300, 20));
 	dlg.setLayout(new MigLayout("flowx"));
 	dlg.add(label,  "span 4, align center, wrap");
-	dlg.add(table, "newline 20px, span");
+	dlg.add(new JScrollPane(table), "newline 20px, span");
 
 	JPanel uvPanel = new JPanel();
 	uvPanel.setLayout(new MigLayout("fillx"));
@@ -121,6 +122,10 @@ batchSelectionDialog(PositionList pl, mm){
 	uvPanel.add(new JLabel("Refresh exposure (ms):"), "newline, split");
 	refreshExposure = new JTextField("2000");
 	uvPanel.add(refreshExposure);
+
+	uvPanel.add(new JLabel("UV Start Frame:"), "newline, split");
+	initialFrame = new JTextField("20");
+	uvPanel.add(initialFrame);
 
 	JButton testButton = new JButton("Test LED");
 	testButton.addActionListener(new ActionListener() {
@@ -185,5 +190,6 @@ batchSelectionDialog(PositionList pl, mm){
 	toReturn.add(power.getText());
 	toReturn.add(initialExposure.getText());
 	toReturn.add(refreshExposure.getText());
+	toReturn.add(initialFrame.getText());
 	return toReturn;
 }

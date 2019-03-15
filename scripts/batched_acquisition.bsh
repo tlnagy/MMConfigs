@@ -33,6 +33,7 @@ dac_number = Character.getNumericValue(data.get(1).charAt(3)); // extract DAC nu
 power_lvl = Double.valueOf(data.get(2)); // get power level
 initial_exposure = Integer.valueOf(data.get(3)); // get initial exposure time
 refresh_exposure = Integer.valueOf(data.get(4)); // get refresh exposure time
+initial_frame = Integer.valueOf(data.get(5));
 
 //iterate over all the positions and group them by well
 for (int p=0; p < pl.getNumberOfPositions(); p++) {
@@ -92,16 +93,6 @@ for (batch : batchedPos.entrySet()) {
 	startPos = batchPositions.get(0);
 	MultiStagePosition.goToPosition(startPos, mmc);
 
-	/*
-	 * INITIAL EXPOSURE
-	 */
-	for (pos : batchPositions){
-		if (!Boolean.valueOf(pos.getProperty("uv"))) { continue; }
-		print("Exposing UV on "+pos.getLabel());
-		led_control("COM3", dac_number, power_lvl, initial_exposure);
-	}
-	
-
 	// iterate over time course
 	for (int t = 0; t < settings.numFrames; t++) {
 		
@@ -118,6 +109,18 @@ for (batch : batchedPos.entrySet()) {
 			y = pos.getY();
 			print("Imaging position "+posName);
 			MultiStagePosition.goToPosition(pos, mmc);
+
+			/*
+			 * UV Exposure
+			 */
+			if (t >= initial_frame){
+				if (Boolean.valueOf(pos.getProperty("uv"))) {
+					exposure = t == initial_frame ? initial_exposure : refresh_exposure;
+					print("Exposing UV on "+pos.getLabel()+" for "+exposure+"ms"); 
+					led_control("COM3", dac_number, power_lvl, exposure);
+				}
+			
+			}
 
 			channelNum = -1;
 			// iterate over all the channels
@@ -139,11 +142,7 @@ for (batch : batchedPos.entrySet()) {
 		
 		}
 
-		for (pos : batchPositions){
-			if (!Boolean.valueOf(pos.getProperty("uv"))) { continue; }
-			print("Exposing UV on "+pos.getLabel());
-			led_control("COM3", dac_number, power_lvl, refresh_exposure);
-		}
+		
 		
 
 		/* 
