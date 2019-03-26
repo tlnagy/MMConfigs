@@ -1,0 +1,145 @@
+//mm.scripter().resetInterpreter();
+import java.util.ArrayList;
+import org.micromanager.data.Datastore;
+import org.micromanager.data.Image;
+import org.micromanager.display.DisplayWindow;
+
+import org.micromanager.PositionList;
+import org.micromanager.MultiStagePosition;
+
+import mmcorej.TaggedImage;
+
+
+
+currObj = mmc.getState("TINosePiece");
+
+// store current PFS offset
+// for some reason, mmc.getAutoFocusOffset() always returns 0.0
+String z_offset = mmc.getProperty("TIPFSOffset", "Position");
+
+autofocusDevice = mmc.getAutoFocusDevice();
+
+try{
+mmc.setTimeoutMs(10000);
+
+addClassPath("C:/Data/tamas/MMConfigs/scripts/");
+importCommands("/");
+
+Thread.sleep(3000);
+
+PositionList pl = mm.positions().getPositionList();
+
+Datastore store = mm.data().createRAMDatastore();
+DisplayWindow display = mm.displays().createDisplay(store);
+mm.displays().manage(store);
+
+private void mdImage(Datastore store, DisplayWindow display, 
+							PositionList pl, int t, int interval, int numFrames){
+	int t0 = t;
+	for (t; t < t0+numFrames; t++) {	
+		long start = System.currentTimeMillis();
+		positionNum = 0;
+		for (pos : pl) {
+			posName = pos.getLabel();
+			x = pos.getX();
+			y = pos.getY();
+			print("Imaging position "+posName);
+			mmc.setXYPosition(x, y);
+			mmc.setPosition("TIPFSOffset", pos.getZ());
+			mmc.waitForDevice(mmc.getXYStageDevice());
+		
+			mmc.snapImage();
+			TaggedImage tmp = mmc.getTaggedImage();
+			Image image = mm.data().convertTaggedImage(tmp);
+			image = image.copyAtCoords(image.getCoords().copy().time(t).stagePosition(positionNum).build());
+			store.putImage(image);
+			positionNum++;
+		}
+	
+		long timediff = interval - (System.currentTimeMillis() - start);
+		// do not sleep for last time point
+		if (t+1 != t0+numFrames && timediff > 0) {
+			Thread.sleep(timediff);
+		}	
+	}
+}
+
+int t = 0;
+int numFrames = 3;
+mdImage(store, display, pl, t, 5000, numFrames);
+t += numFrames;
+
+
+print("Current Z height" + mmc.getPosition(mmc.getFocusDevice()));
+long startTime = System.currentTimeMillis();
+
+mmc.enableContinuousFocus(false);
+mmc.waitForDevice(autofocusDevice);
+
+// It should be in the first position but we should just check to make sure
+posOf10x = mmc.getStateFromLabel("TINosePiece", "1-Plan Fluor 10x NA 0.30 Dry");
+
+currObj = mmc.getState("TINosePiece");
+
+mmc.setState("TINosePiece", posOf10x);
+mmc.waitForDevice("TINosePiece");
+
+Thread ledthread = new Thread(new Runnable() { public void run() { 
+  	System.out.println("Exposing UV in another thread");
+	led_control("COM3", "DAC1", 1.0, 10000);
+	System.out.println("UV Done"); 
+}});
+ledthread.start();
+numFrames = 3;
+mdImage(store, display, pl, t, 5000, numFrames);
+t += numFrames;
+
+mmc.setState("TINosePiece", currObj);
+mmc.waitForDevice("TINosePiece");
+
+// reenable PFS
+
+mmc.setProperty("TIPFSOffset", "Position", z_offset);
+mmc.enableContinuousFocus(true);
+mmc.waitForDevice(autofocusDevice);
+Thread.sleep(1000); // allow PFS Offset to calm down
+
+print("Current Z height" + mmc.getPosition(mmc.getFocusDevice()));
+long endTime = System.currentTimeMillis();;
+long duration = (endTime - startTime); 
+print("Time " + duration);
+
+int numFrames = 20;
+mdImage(store, display, pl, t, 5000, numFrames);
+t += numFrames;
+store.freeze();
+} finally {
+	print("cleaning up");
+	mmc.setState("TINosePiece", currObj);
+	mmc.waitForDevice("TINosePiece");
+	
+	// reenable PFS
+	
+	mmc.setProperty("TIPFSOffset", "Position", z_offset);
+	mmc.enableContinuousFocus(true);
+	mmc.waitForDevice(autofocusDevice);
+	mm.scripter().resetInterpreter();
+}
+
+
+
+//// turn off PFS
+		
+		
+//		z = mmc.getPosition(mmc.getFocusDevice());
+//		print("Baseline z: "+mmc.getPosition(mmc.getFocusDevice()));
+//		mmc.setPosition(mmc.getFocusDevice(), z - offset);
+//		mmc.waitForDevice(mmc.getFocusDevice());
+//		print("Offset z: "+mmc.getPosition(mmc.getFocusDevice()));
+//		mmc.setPosition(mmc.getFocusDevice(), z);
+//		mmc.waitForDevice(mmc.getFocusDevice());
+//		
+//		print("Return to baseline z: "+mmc.getPosition(mmc.getFocusDevice()));
+//		
+//		Thread.sleep(1000); // 1 second sleep before next round
+//	}
