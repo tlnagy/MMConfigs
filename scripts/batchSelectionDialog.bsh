@@ -131,7 +131,7 @@ batchSelectionDialog(PositionList pl, mm){
 	testButton.addActionListener(new ActionListener() {
 	  
 	   public void actionPerformed(ActionEvent event) {
-	   	dac_number = Character.getNumericValue(dacEntry.getText().charAt(3));
+	   	dac_number = dacEntry.getText();
 	   	power_lvl = Double.valueOf(power.getText());
 	   	initial_ex =  Integer.valueOf(initialExposure.getText());
 	   	Runnable runnable = new Runnable() {
