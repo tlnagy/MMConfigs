@@ -108,11 +108,11 @@ batchSelectionDialog(PositionList pl, mm){
 	uvPanel.setBorder(new TitledBorder("UV details"));
 
 	uvPanel.add(new JLabel("DAC port:"), "split");
-	dacEntry = new JTextField("DAC2");
+	dacEntry = new JTextField("DAC1");
 	uvPanel.add(dacEntry);
 
 	uvPanel.add(new JLabel("Power level (0.0-1.0):"), "newline, split");
-	power = new JTextField("0.1");
+	power = new JTextField("1.0");
 	uvPanel.add(power);
 
 	uvPanel.add(new JLabel("Initial exposure (ms):"), "newline, split");
