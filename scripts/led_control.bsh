@@ -4,7 +4,11 @@
  * 
  */
 
+import java.awt.Dimension;
 import mmcorej.CharVector;
+import javax.swing.JLabel;
+import org.micromanager.internal.utils.MMDialog;
+import net.miginfocom.swing.MigLayout;
 
 /*
  *  Deliver voltage for a given amount of time (in milliseconds) via
@@ -34,4 +38,18 @@ led_control(String port, String dac, double voltage) {
 	mmc.writeToSerialPort(port, message);
 }
 
-mmc.setSerialProperties("COM3", "250", "57600", "0", "Off", "None", "1");
+try{
+	// connect to COM3 port
+	mmc.loadDevice("COM3", "SerialManager", "COM3");
+	mmc.initializeDevice("COM3");
+	mmc.setSerialProperties("COM3", "250", "57600", "0", "Off", "None", "1");
+} catch (Exception e) {
+	dlg = new MMDialog(mm.getFrame(), false);
+	dlg.setTitle("Error");
+	dlg.setLayout(new MigLayout("flowx"));
+	dlg.setLocation(100,100);
+	label = new JLabel("<html>"+e.getMessage()+"</html>");
+	dlg.add(label, "span 4, align center, wrap");
+	dlg.setMinimumSize(new Dimension(300, 120));
+	dlg.setVisible(true);
+}
