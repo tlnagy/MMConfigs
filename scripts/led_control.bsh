@@ -6,6 +6,7 @@
 
 import java.awt.Dimension;
 import mmcorej.CharVector;
+import mmcorej.DeviceType;
 import javax.swing.JLabel;
 import org.micromanager.internal.utils.MMDialog;
 import net.miginfocom.swing.MigLayout;
@@ -39,9 +40,19 @@ led_control(String port, String dac, double voltage) {
 }
 
 try{
-	// connect to COM3 port
-	mmc.loadDevice("COM3", "SerialManager", "COM3");
-	mmc.initializeDevice("COM3");
+	// connect to COM3 port if it's not already loaded
+	loaded = false;
+	ports = mmc.getLoadedDevicesOfType(DeviceType.SerialDevice);
+	for(int i = 0; i < ports.size(); i++) {
+		if(ports.get(i).equals("COM3")){
+			loaded = true;
+			break;
+		}
+	}
+	if(!loaded){
+		mmc.loadDevice("COM3", "SerialManager", "COM3");
+		mmc.initializeDevice("COM3");
+	}
 	mmc.setSerialProperties("COM3", "250", "57600", "0", "Off", "None", "1");
 } catch (Exception e) {
 	dlg = new MMDialog(mm.getFrame(), false);
@@ -53,3 +64,4 @@ try{
 	dlg.setMinimumSize(new Dimension(300, 120));
 	dlg.setVisible(true);
 }
+
