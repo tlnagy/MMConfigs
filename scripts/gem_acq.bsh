@@ -1,0 +1,123 @@
+/*
+ * test
+ */
+
+
+import org.micromanager.PositionList;
+import org.micromanager.MultiStagePosition;
+import org.micromanager.data.Coords;
+import org.micromanager.data.Image;
+import org.micromanager.data.Datastore;
+import org.micromanager.data.Metadata;
+import org.micromanager.display.DisplayWindow;
+import org.micromanager.acquisition.ChannelSpec;
+
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.io.File;
+
+PositionList pl = mm.positions().getPositionList();
+
+LinkedHashMap batchedPos = new LinkedHashMap();
+
+print("Batching positions by well");
+
+addClassPath("C:/Data/tamas/MMConfigs/scripts/");
+importCommands("/");
+
+// load settings from the acquisition panel
+settings = mm.acquisitions().getAcquisitionSettings();
+
+// Derive a new unique filename
+loc = new File(settings.root, settings.prefix);
+loc = mm.data().getUniqueSaveDirectory(loc.getPath());
+
+// setup image storage
+Datastore store = mm.data().createMultipageTIFFDatastore(loc, false, false);
+DisplayWindow display = mm.displays().createDisplay(store);
+mm.displays().manage(store);
+
+// builders needed for image metadata
+Coords.CoordsBuilder coordBuilder = mm.data().getCoordsBuilder();
+Metadata.MetadataBuilder mdBuilder = mm.data().getMetadataBuilder();
+smdBuilder = mm.data().getSummaryMetadataBuilder();
+
+
+mmc.setConfig("_TIRF", "561");
+
+// point straight up
+mmc.setProperty("TITIRF", "Position", 33000);
+
+mmc.waitForConfig("_TIRF", "561");
+
+x = mmc.getXPosition();
+y = mmc.getYPosition();
+
+numInitialFrames = 10;
+interval = 2500;
+snapManager = mm.live();
+red_exposure = 10;
+
+try{
+for (int t = 0; t < numInitialFrames; t++) {
+
+    long start = System.currentTimeMillis();
+
+    mmc.setExposure(red_exposure);
+    Image image = snapManager.snap(false).get(0);
+    metadata = mdBuilder.positionName("Pos").xPositionUm(x).yPositionUm(y).build();
+    print(t);
+    coords = coordBuilder.channel(1).time(t).stagePosition(0).build();
+    image = image.copyWith(coords, metadata);
+    store.putImage(image);
+
+    
+    long timediff = interval - (System.currentTimeMillis() - start);
+    // do not sleep for last time point
+    if (t+1 != numInitialFrames) {
+        if (timediff > 0) { 
+            Thread.sleep(timediff);
+        }
+    }	
+}
+
+
+numFrames = 300;
+
+for (int x = 0; x < 3; x++){
+	print("Switching to imaging 488");
+	mmc.setConfig("_TIRF", "488");
+	mmc.waitForConfig("_TIRF", "488");
+
+	
+	for (int t = 0; t < numFrames; t++) {
+	    mmc.setExposure(10);
+	    tval = numInitialFrames + t + x*numFrames;
+	    print(tval);
+	    Image image = snapManager.snap(false).get(0);
+	    metadata = mdBuilder.positionName("Pos").xPositionUm(x).yPositionUm(y).build();
+	    coords = coordBuilder.channel(0).time(tval).stagePosition(0).build();
+	    image = image.copyWith(coords, metadata);
+	    store.putImage(image);
+	}
+
+	print("Switching to imaging 488");
+	mmc.setConfig("_TIRF", "561");
+	mmc.waitForConfig("_TIRF", "561");
+
+	tval = numInitialFrames + (x+1)*numFrames-1;
+	print(tval);
+	mmc.setExposure(red_exposure);
+	Image image = snapManager.snap(false).get(0);
+	metadata = mdBuilder.positionName("Pos").xPositionUm(x).yPositionUm(y).build();
+	coords = coordBuilder.channel(1).time(tval).stagePosition(0).build();
+	image = image.copyWith(coords, metadata);
+	store.putImage(image);
+}
+
+
+}
+finally {
+	print("Quit.");
+	mm.scripter().resetInterpreter();
+}
