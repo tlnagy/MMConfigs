@@ -66,7 +66,7 @@ loc = new File(settings.root, settings.prefix);
 loc = mm.data().getUniqueSaveDirectory(loc.getPath());
 
 // setup image storage
-Datastore store = mm.data().createSinglePlaneTIFFSeriesDatastore(loc);
+Datastore store = mm.data().createMultipageTIFFDatastore(loc, false, false);
 DisplayWindow display = mm.displays().createDisplay(store);
 mm.displays().manage(store);
 
@@ -78,9 +78,35 @@ smdBuilder = mm.data().getSummaryMetadataBuilder();
 channels = settings.channels;
 groupName = settings.channelGroup;
 
+channelnames = new ArrayList();
+totalChannels = 0;
+for (ChannelSpec channel : channels ) {
+	if (!channel.useChannel) { continue; }
+	++totalChannels;
+	channelnames.add((String) channel.config);
+}
+
 long interval = (long) settings.intervalMs;
 
+smdBuilder = smdBuilder.channelNames(channelnames.toArray(new String[0])).
+        channelGroup(groupName).
+        waitInterval(interval).
+        microManagerVersion(mm.compat().getVersion()).
+        startDate((new Date()).toString());
+smdBuilder = smdBuilder.intendedDimensions(mm.data().getCoordsBuilder().
+        channel(totalChannels).
+        z(0).
+        time(settings.numFrames).
+        stagePosition(batchedPos.size()).                    
+        build());
+store.setSummaryMetadata(smdBuilder.build());
+
+zdevice = mmc.getFocusDevice();
+
+starttime = System.nanoTime();
 snapManager = mm.live();
+
+mmc.setStateLabel("TIFilterBlockTop", "2-488lp");
 
 try{
 batchNum = 0;
@@ -133,10 +159,24 @@ for (batch : batchedPos.entrySet()) {
 				mmc.setExposure(channel.exposure);
 				mmc.setConfig(groupName, config);
 				mmc.waitForConfig(groupName, config);
-			
+
+				xreal = mmc.getXPosition();
+				yreal = mmc.getYPosition();
+				z = mmc.getPosition(zdevice);
+				pxsz = mmc.getPixelSizeUm();
+
+				now = System.nanoTime();
+
 				Image image = snapManager.snap(false).get(0);
-				metadata = mdBuilder.positionName(posName).xPositionUm(x).yPositionUm(y).build();
-				coords = coordBuilder.channel(channelNum).time(t).stagePosition(positionNum).build();
+
+				metadata = mdBuilder.positionName(posName).
+							xPositionUm(xreal).
+							yPositionUm(yreal).
+							zPositionUm(z).
+							pixelSizeUm(pxsz).
+							elapsedTimeMs(((float)now-starttime)/1000/1000).build();
+			
+				coords = coordBuilder.channel(channelNum).time(t).stagePosition(positionNum).z(0).build();
 				image = image.copyWith(coords, metadata);
 				store.putImage(image);
 			}
@@ -165,5 +205,5 @@ for (batch : batchedPos.entrySet()) {
 }
 finally {
 	print("Quit.");
-	mm.scripter().resetInterpreter();
+	store.freeze();
 }
