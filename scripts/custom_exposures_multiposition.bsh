@@ -1,0 +1,107 @@
+/*
+ * This script is for imaging multiple positions with different imaging settings
+ * per position. Currently, the standard acquisition dialog only allows the same
+ * settings for every position, but I want to compare cells labeled using different 
+ * dyes simultaneously in different wells.
+ * 
+ */
+
+import org.micromanager.PositionList;
+import org.micromanager.MultiStagePosition;
+import org.micromanager.data.Coords;
+import org.micromanager.data.Image;
+import org.micromanager.data.Datastore;
+import org.micromanager.data.Metadata;
+import org.micromanager.data.internal.CommentsHelper;
+import org.micromanager.display.DisplayWindow;
+import org.micromanager.acquisition.ChannelSpec;
+
+import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.io.File;
+
+PositionList pl = mm.positions().getPositionList();
+
+// load settings from the acquisition panel
+settings = mm.acquisitions().getAcquisitionSettings();
+
+// Derive a new unique filename
+loc = new File(settings.root, settings.prefix);
+loc = mm.data().getUniqueSaveDirectory(loc.getPath());
+
+// setup image storage
+Datastore store = mm.data().createMultipageTIFFDatastore(loc, false, false);
+DisplayWindow display = mm.displays().createDisplay(store);
+mm.displays().manage(store);
+print("Created new store and display");
+
+// builders needed for image metadata
+Coords.CoordsBuilder coordBuilder = mm.data().getCoordsBuilder();
+Metadata.MetadataBuilder mdBuilder = mm.data().getMetadataBuilder();
+smdBuilder = mm.data().getSummaryMetadataBuilder();
+
+starttime = System.nanoTime();
+
+channels = settings.channels;
+groupName = settings.channelGroup;
+
+/*
+ * Small class to store per-position settings
+ */
+public class PosSettings { 
+  public final String[] channelGroups; 
+  public final String[] channelNames;
+  public final Integer[] exposures;
+    
+  public PosSettings(String group, String name, Integer exposure) { 
+    this(new String[]{group}, new String[]{name}, new Integer[]{exposure});
+  }
+
+  public PosSettings(String[] groups, String[] names, Integer[] exposures) {
+    this.channelGroups = groups;
+    this.channelNames = names;
+    this.exposures = exposures;
+  }
+};
+
+/*
+ * ////////////////////////////////////////////////////////////////////
+ * Set up per position imaging settings
+ * ////////////////////////////////////////////////////////////////////
+ */
+
+ArrayList posSettings = new ArrayList();
+
+interval = 10000;
+numFrames = 5;
+
+groupName = "EPI";
+// TODO: figure out how to handle channel info
+totalChannels = 2;
+posSettings.add(new PosSettings(groupName, "EPI_mNG", 50));
+posSettings.add(new PosSettings(groupName, "EPI_BFP", 75));
+
+if (pl.getNumberOfPositions() != posSettings.size()) {
+	String s = "The number of position settings must match the number of positions: (" + pl.getNumberOfPositions() + ")";
+	throw new ArrayIndexOutOfBoundsException(s);
+}
+
+return
+
+snapManager = mm.live();
+
+smdBuilder = smdBuilder.channelNames(channelnames.toArray(new String[0])).
+        channelGroup(groupName).
+        microManagerVersion(mm.compat().getVersion()).
+        startDate((new Date()).toString());
+smdBuilder = smdBuilder.intendedDimensions(mm.data().getCoordsBuilder().
+        channel(totalChannels).
+        z(0).
+        time(numFrames).
+        stagePosition(pl.getNumberOfPositions()).                    
+        build());
+store.setSummaryMetadata(smdBuilder.build());
+zdevice = mmc.getFocusDevice();
+CommentsHelper.setSummaryComment(store, "Taken using custom_exposures_multiposition.bsh");
+
+Thread.sleep(500);
