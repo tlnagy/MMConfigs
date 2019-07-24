@@ -133,6 +133,7 @@ try{
                                     xPositionUm(x).
                                     yPositionUm(y).
                                     zPositionUm(z).
+                                    exposureMs(channel.exposure).
                                     pixelSizeUm(pxsz).
                                     elapsedTimeMs(((float)now-starttime)/1000/1000).build();
 
