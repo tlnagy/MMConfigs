@@ -42,9 +42,6 @@ smdBuilder = mm.data().getSummaryMetadataBuilder();
 
 starttime = System.nanoTime();
 
-channels = settings.channels;
-groupName = settings.channelGroup;
-
 /*
  * Small class to store per-position settings
  */
@@ -72,25 +69,26 @@ public class PosSettings {
 
 ArrayList posSettings = new ArrayList();
 
-interval = 10000;
-numFrames = 5;
+interval = 15000;
+int numFrames = 240;
 
 groupName = "EPI";
 // TODO: figure out how to handle channel info
-totalChannels = 2;
-posSettings.add(new PosSettings(groupName, "EPI_mNG", 50));
-posSettings.add(new PosSettings(groupName, "EPI_BFP", 75));
+// this should be equal to the union of all per-position channel sets
+channelnames = new String[]{"EPI_DIA", "EPI_mNG", "EPI_RFP"};
+totalChannels = channelnames.length;
+posSettings.add(new PosSettings(groupName, new String[]{"EPI_DIA", "EPI_mNG"}, new Integer[]{40, 10}));
+posSettings.add(new PosSettings(groupName, new String[]{"EPI_DIA", "EPI_RFP"}, new Integer[]{40, 200}));
+
 
 if (pl.getNumberOfPositions() != posSettings.size()) {
 	String s = "The number of position settings must match the number of positions: (" + pl.getNumberOfPositions() + ")";
 	throw new ArrayIndexOutOfBoundsException(s);
 }
 
-return
-
 snapManager = mm.live();
 
-smdBuilder = smdBuilder.channelNames(channelnames.toArray(new String[0])).
+smdBuilder = smdBuilder.channelNames(channelnames).
         channelGroup(groupName).
         microManagerVersion(mm.compat().getVersion()).
         startDate((new Date()).toString());
@@ -105,3 +103,67 @@ zdevice = mmc.getFocusDevice();
 CommentsHelper.setSummaryComment(store, "Taken using custom_exposures_multiposition.bsh");
 
 Thread.sleep(500);
+
+
+try{
+	for (int t = 0; t < numFrames; t++) {
+
+		long start = System.currentTimeMillis();
+      print("t=" + t);
+
+      for (int p=0; p < pl.getNumberOfPositions(); p++) {
+            
+			pos = pl.getPosition(p);
+         posname = pos.getLabel();
+         print("\tImaging "+posname);
+            
+         MultiStagePosition.goToPosition(pos, mmc);
+
+         configs = posSettings.get(p)
+
+         for (int c = 0; c < configs.channelNames.length; c++) { 
+
+				config = configs.channelNames[c];
+				exposure = (int) configs.exposures[c];
+	         print("\t\tImaging channel: "+config);
+	
+	         mmc.setExposure(exposure);
+				mmc.setConfig(groupName, config);
+				mmc.waitForConfig(groupName, config);
+	
+	         x = mmc.getXPosition();
+	         y = mmc.getYPosition();
+	         z = mmc.getPosition(zdevice);
+	         pxsz = mmc.getPixelSizeUm();
+	         now = System.nanoTime();
+	         Image image = snapManager.snap(false).get(0);
+	
+				metadata = mdBuilder.positionName(posname).
+				                  xPositionUm(x).
+				                  yPositionUm(y).
+				                  zPositionUm(z).
+				                  exposureMs(exposure).
+				                  pixelSizeUm(pxsz).
+				                  elapsedTimeMs(((float)now-starttime)/1000/1000).build();
+
+				channel_index = Arrays.asList(channelnames).indexOf(config);
+				coords = coordBuilder.channel(channel_index).time(t).stagePosition(p).z(0).build();
+				image = image.copyWith(coords, metadata);
+				store.putImage(image);
+         }
+		}
+		
+		long timediff = interval - (System.currentTimeMillis() - start);
+		// do not sleep for last time point
+		if (t+1 != numFrames) {
+			if (timediff > 0) { 
+				Thread.sleep(timediff);
+			}
+		}
+	}
+}
+finally {
+	store.freeze();
+	store.close();
+	print("Quit.");
+}
