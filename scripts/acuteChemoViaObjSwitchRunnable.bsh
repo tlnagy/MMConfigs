@@ -1,0 +1,57 @@
+// load led controls
+addClassPath("C:/Data/tamas/MMConfigs/scripts/");
+importCommands("/");
+
+acq = mm.acquisitions();
+acq.clearRunnables();
+
+settings = acq.getAcquisitionSettings();
+
+// When to uncage in minutes
+uncage_time_mins = 3;
+uncage_frame = (int) (60*uncage_time_mins / (settings.intervalMs / 1000));
+
+runnable = new Runnable() {
+    int count = 0;
+    public void run() {
+        mmc.setTimeoutMs(10000);
+
+        print("Current state");
+        String z_offset = mmc.getProperty("TIPFSOffset", "Position");
+        autofocusDevice = mmc.getAutoFocusDevice();
+
+        print("Disable PFS");
+        mmc.enableContinuousFocus(false);
+        mmc.waitForDevice(autofocusDevice);
+
+        initialPosition = mmc.getPosition("TIZDrive"); 
+        targetPosition = Math.max(initialPosition-1000, 500);
+        print("Dropping objective to "+targetPosition);
+        mmc.setPosition("TIZDrive", targetPosition);
+        mmc.waitForDevice("TIZDrive");
+
+        print("Exposing UV....");
+        led_control("COM3", "DAC1", 1.0, 5000);
+        print("Done.\n");
+
+        print("Restoring height");
+        mmc.setPosition("TIZDrive", initialPosition);
+        mmc.waitForDevice("TIZDrive");
+
+        // activate PFS again
+        mmc.setProperty("TIPFSOffset", "Position", z_offset);
+        mmc.enableContinuousFocus(true);
+        mmc.waitForDevice(autofocusDevice);
+        Thread.sleep(1000);
+    }
+};
+
+
+// uncage at the given time point at the first position and first z slice
+acq.attachRunnable(uncage_frame, -1, 0, 0, runnable); // f, p, c, s
+
+message = "\n Taken using runnable:\n    UV exposed at frame #" + uncage_frame;
+settings.comment += message;
+
+acq.setAcquisitionSettings(settings);
+print("Attached runnable");
