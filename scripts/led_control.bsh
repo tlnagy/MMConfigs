@@ -30,13 +30,32 @@ led_control(String port, String dac, double voltage, int time) {
 }
 
 led_control(String port, String dac, double voltage) {
-	CharVector = message = new CharVector();
+	CharVector message = new CharVector();
 
 	command = dac+", "+(int)(voltage*65535)+"\r\n";
 	// convert string to char vector
 	for (char ch: command.toCharArray()){ message.add(ch); }
 	
 	mmc.writeToSerialPort(port, message);
+}
+
+led_control_async(String port, String dac, double voltage, int time) {
+	long start_time = System.currentTimeMillis();
+	led_control(port, dac, voltage);
+	
+	runnable = new Runnable() {
+		public void run() {
+			while (true) {
+				long timeleft = super.time - (System.currentTimeMillis() - super.start_time);
+				if (timeleft < 0) {
+					led_control(super.port, super.dac, 0.0);
+					break;
+				}
+			}
+		}
+	};
+	subThread = new Thread(runnable);
+	subThread.start();
 }
 
 try{
@@ -50,6 +69,7 @@ try{
 		}
 	}
 	if(!loaded){
+		print("Initializing LEDs");
 		mmc.loadDevice("COM3", "SerialManager", "COM3");
 		mmc.initializeDevice("COM3");
 	}
