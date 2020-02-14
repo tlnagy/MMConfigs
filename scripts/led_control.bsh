@@ -11,6 +11,8 @@ import javax.swing.JLabel;
 import org.micromanager.internal.utils.MMDialog;
 import net.miginfocom.swing.MigLayout;
 
+double current_led_voltage = 0.0;
+
 /*
  *  Deliver voltage for a given amount of time (in milliseconds) via
  *  the given port and DAC number.
@@ -23,14 +25,17 @@ import net.miginfocom.swing.MigLayout;
  */
 led_control(String port, String dac, double voltage, int time) {
 	long start = System.currentTimeMillis();
+	prev_voltage = global.current_led_voltage; // get current voltage so we can restore it later
 	led_control(port, dac, voltage);
 	long timediff = time - (System.currentTimeMillis() - start);
 	Thread.sleep(timediff);
-	led_control(port, dac, 0.0);
+	led_control(port, dac, prev_voltage); // restore
 }
 
 led_control(String port, String dac, double voltage) {
 	CharVector message = new CharVector();
+
+	global.current_led_voltage = voltage;
 
 	command = dac+", "+(int)(voltage*65535)+"\r\n";
 	// convert string to char vector
@@ -41,6 +46,7 @@ led_control(String port, String dac, double voltage) {
 
 led_control_async(String port, String dac, double voltage, int time) {
 	long start_time = System.currentTimeMillis();
+	prev_voltage = global.current_led_voltage;
 	led_control(port, dac, voltage);
 	
 	runnable = new Runnable() {
@@ -48,7 +54,7 @@ led_control_async(String port, String dac, double voltage, int time) {
 			while (true) {
 				long timeleft = super.time - (System.currentTimeMillis() - super.start_time);
 				if (timeleft < 0) {
-					led_control(super.port, super.dac, 0.0);
+					led_control(super.port, super.dac, super.prev_voltage); // restore voltage
 					break;
 				}
 			}
