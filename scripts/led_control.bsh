@@ -44,7 +44,7 @@ led_control(String port, String dac, double voltage) {
 	mmc.writeToSerialPort(port, message);
 }
 
-led_control_async(String port, String dac, double voltage, int time) {
+led_control_async(String port, String dac, double voltage, int time, bool tracking) {
 	long start_time = System.currentTimeMillis();
 	prev_voltage = global.current_led_voltage;
 	led_control(port, dac, voltage);
@@ -53,9 +53,13 @@ led_control_async(String port, String dac, double voltage, int time) {
 		public void run() {
 			while (true) {
 				long timeleft = super.time - (System.currentTimeMillis() - super.start_time);
+				// if we're tracking voltage than we need to update our target voltage whenever it
+				// changes in the background
+				if (super.tracking && global.current_led_voltage != super.prev_voltage) {
+					super.prev_voltage = global.current_led_voltage;
+				}
 				if (timeleft < 0) {
 					led_control(super.port, super.dac, super.prev_voltage); // restore voltage
-					global.current_led_voltage = super.prev_voltage;
 					break;
 				}
 			}
