@@ -23,7 +23,9 @@ buffer = 50; // buffer time in milliseconds
 uncaging = new Runnable() {
     int count = 0;
     public void run() {
-        led_control_async(global.port, global.dac, global.power, global.uncaging_length_secs*1000);
+        // this is a non-tracking async call since it shouldn't care about the status of
+        // other async calls, this should dominate
+        led_control_async(global.port, global.dac, global.power, global.uncaging_length_secs*1000, false);
     }
 };
 
@@ -33,7 +35,8 @@ blanker = new Runnable() {
     int channel = 0;
     public void run() {
         exposure_time = (int)global.settings.channels.get(channel).exposure + global.buffer;
-        led_control_async(global.port, global.dac, 0.0, exposure_time);
+        // this should track whatever the master async call is doing
+        led_control_async(global.port, global.dac, 0.0, exposure_time, true);
 
         channel = (channel + 1) % num_channels;
     }
