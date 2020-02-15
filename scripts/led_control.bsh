@@ -55,6 +55,7 @@ led_control_async(String port, String dac, double voltage, int time) {
 				long timeleft = super.time - (System.currentTimeMillis() - super.start_time);
 				if (timeleft < 0) {
 					led_control(super.port, super.dac, super.prev_voltage); // restore voltage
+					global.current_led_voltage = super.prev_voltage;
 					break;
 				}
 			}
