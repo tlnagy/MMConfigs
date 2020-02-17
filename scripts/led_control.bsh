@@ -15,7 +15,8 @@ double current_led_voltage = 0.0;
 
 /*
  *  Deliver voltage for a given amount of time (in milliseconds) via
- *  the given port and DAC number.
+ *  the given port and DAC number. This is a synchronous call so it 
+ *  blocks the main thread.
  *  
  *  Example:
  *  
@@ -33,9 +34,15 @@ led_control(String port, String dac, double voltage, int time) {
 }
 
 led_control(String port, String dac, double voltage) {
+	led_control(port, dac, voltage, true);
+}
+
+led_control(String port, String dac, double voltage, boolean update) {
 	CharVector message = new CharVector();
 
-	global.current_led_voltage = voltage;
+	if (update) {
+		global.current_led_voltage = voltage;
+	}
 
 	command = dac+", "+(int)(voltage*65535)+"\r\n";
 	// convert string to char vector
@@ -44,10 +51,14 @@ led_control(String port, String dac, double voltage) {
 	mmc.writeToSerialPort(port, message);
 }
 
-led_control_async(String port, String dac, double voltage, int time, bool tracking) {
+/**
+ *  Deliver voltage for a given amount time (in milliseconds) asynchronously. 
+ */
+led_control_async(String port, String dac, double voltage, int time, boolean update) {
 	long start_time = System.currentTimeMillis();
 	prev_voltage = global.current_led_voltage;
-	led_control(port, dac, voltage);
+	led_control(port, dac, voltage, update);
+	print("On " + voltage + " for " + time + ": "+ global.current_led_voltage);
 	
 	runnable = new Runnable() {
 		public void run() {
@@ -55,11 +66,13 @@ led_control_async(String port, String dac, double voltage, int time, bool tracki
 				long timeleft = super.time - (System.currentTimeMillis() - super.start_time);
 				// if we're tracking voltage than we need to update our target voltage whenever it
 				// changes in the background
-				if (super.tracking && global.current_led_voltage != super.prev_voltage) {
+				if ((!super.update) && global.current_led_voltage != super.prev_voltage) {
+					print("Updating target voltage to " + global.current_led_voltage + " " + super.time);
 					super.prev_voltage = global.current_led_voltage;
 				}
 				if (timeleft < 0) {
-					led_control(super.port, super.dac, super.prev_voltage); // restore voltage
+					led_control(super.port, super.dac, super.prev_voltage, super.update); // restore voltage
+					print("Off " + super.voltage + " for " + super.time + ": "+ global.current_led_voltage);
 					break;
 				}
 			}

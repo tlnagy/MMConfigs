@@ -18,27 +18,65 @@ print("Uncaging will happen at frame "+uncage_frame+" for "+uncaging_length_secs
 port = "COM3";
 dac = "DAC2";
 power = 1.0;
-buffer = 50; // buffer time in milliseconds
+
+// turn off LEDs
+led_control(port, dac, 0.0);
+
+long start_time = 0;
 
 uncaging = new Runnable() {
     int count = 0;
     public void run() {
-        // this is a non-tracking async call since it shouldn't care about the status of
-        // other async calls, this should dominate
-        led_control_async(global.port, global.dac, global.power, global.uncaging_length_secs*1000, false);
+        // this call should update the global led state
+        led_control_async(global.port, global.dac, global.power, global.uncaging_length_secs*1000, true);
+        global.start_time = System.currentTimeMillis();
     }
 };
 
 num_channels = settings.channels.size();
 
-blanker = new Runnable() {
-    int channel = 0;
-    public void run() {
-        exposure_time = (int)global.settings.channels.get(channel).exposure + global.buffer;
-        // this should track whatever the master async call is doing
-        led_control_async(global.port, global.dac, 0.0, exposure_time, true);
+shutterManager = mm.getShutterManager();
 
-        channel = (channel + 1) % num_channels;
+long led_on = 0;
+
+runnable = new Runnable() {
+    public void run() { 
+        shutterTracker = new Runnable() {
+            public void run() {
+                print("Tracking shutters...");
+                boolean state = false;
+
+                while (global.mm.acquisitions().isAcquisitionRunning()) {
+                    long howlong = 0;
+
+                    // we detect a switch in the shutter state
+                    if (global.shutterManager.getShutter() != state) {
+                        state = !state;
+                        howlong = (System.currentTimeMillis() - global.start_time);
+                        if (global.current_led_voltage > 0.0) {
+                            global.start_time = System.currentTimeMillis();
+                        }
+
+                        // if the shutter just opened, turn off the leds
+                        if (state) {
+                            led_control(super.port, super.dac, 0.0, false);
+                            if (global.current_led_voltage > 0.0) {
+                                print("LEDs were on for " + howlong);
+                                global.led_on += howlong;
+                            }
+                        } else { // otherwise the shutter just closed, turn leds back on
+                            led_control(super.port, super.dac, global.current_led_voltage, false);
+                            if (global.current_led_voltage > 0.0) {
+                                print("LEDs were off for "+ howlong);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        subThread = new Thread(shutterTracker);
+        subThread.start();
     }
 };
 
@@ -46,7 +84,7 @@ blanker = new Runnable() {
 // uncage at the given time point at the first position and first z slice
 acq.attachRunnable(uncage_frame, -1, 0, 0, uncaging); // f, p, c, s
 
-acq.attachRunnable(-1, 0, -1, 0, blanker); // f, p, c, s
+acq.attachRunnable(0, 0, 0, 0, runnable); // f, p, c, s
 
 
 message = "\n Taken using runnable:\n    UV exposed at frame #" + uncage_frame;
