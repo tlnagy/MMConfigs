@@ -23,13 +23,16 @@ power = 1.0;
 led_control(port, dac, 0.0);
 
 long start_time = 0;
+long led_start_time = -1000000;
 
 uncaging = new Runnable() {
     int count = 0;
     public void run() {
         // this call should update the global led state
         led_control_async(global.port, global.dac, global.power, global.uncaging_length_secs*1000, true);
-        global.start_time = System.currentTimeMillis();
+        global.led_start_time = System.currentTimeMillis();
+        global.lastChange = global.led_start_time;
+        print((global.led_start_time - global.start_time) + " LEDs on.");
     }
 };
 
@@ -43,35 +46,55 @@ runnable = new Runnable() {
     public void run() { 
         shutterTracker = new Runnable() {
             public void run() {
-                print("Tracking shutters...");
+                print("Acquisition started...");
+                global.start_time = System.currentTimeMillis();
                 boolean state = false;
+                global.led_on = 0;
+
+                print("0 Tracking shutters...");
+
+                long timediff = 0;
+                double prevVoltage = 0.0;
 
                 while (global.mm.acquisitions().isAcquisitionRunning()) {
                     long howlong = 0;
+                    long curr_time = System.currentTimeMillis();
+                    timediff = curr_time - global.start_time;
 
                     // we detect a switch in the shutter state
                     if (global.shutterManager.getShutter() != state) {
                         state = !state;
-                        howlong = (System.currentTimeMillis() - global.start_time);
+                        howlong = (curr_time - global.lastChange);
                         if (global.current_led_voltage > 0.0) {
-                            global.start_time = System.currentTimeMillis();
+                            global.lastChange = curr_time;
                         }
-
+                        
                         // if the shutter just opened, turn off the leds
                         if (state) {
                             led_control(super.port, super.dac, 0.0, false);
                             if (global.current_led_voltage > 0.0) {
-                                print("LEDs were on for " + howlong);
+                                print(timediff + " LEDs were on for " + howlong);
                                 global.led_on += howlong;
                             }
                         } else { // otherwise the shutter just closed, turn leds back on
                             led_control(super.port, super.dac, global.current_led_voltage, false);
                             if (global.current_led_voltage > 0.0) {
-                                print("LEDs were off for "+ howlong);
+                                print(timediff + " LEDs were off for " + howlong);
                             }
                         }
+                        prevVoltage = global.current_led_voltage;
                     }
-                }
+
+                    if ((prevVoltage > 0.0) && (global.current_led_voltage == 0.0)) {
+                        print(timediff + " LEDs were on for "+ (curr_time - global.lastChange));
+                        prevVoltage = 0.0;
+                        global.led_on += (curr_time - global.lastChange);
+                    }
+				}
+
+                print(timediff + " LEDs were on for " + global.led_on + "ms total");
+                print("Unregistering all runnables");
+                global.mm.acquisitions().clearRunnables();
             }
         };
 
