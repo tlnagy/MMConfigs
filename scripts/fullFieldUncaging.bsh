@@ -8,7 +8,7 @@ acq.clearRunnables();
 settings = acq.getAcquisitionSettings();
 
 // When to uncage in minutes
-uncage_time_mins = 0.2;
+uncage_time_mins = 5.0;
 uncage_frame = (int) (uncage_time_mins * 60 / (settings.intervalMs / 1000));
 
 // how long to uncage for
