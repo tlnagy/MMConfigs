@@ -82,7 +82,7 @@ runnable = new Runnable() {
 
 
 // uncage at the given time point at the first position and first z slice
-acq.attachRunnable(uncage_frame, -1, 0, 0, uncaging); // f, p, c, s
+acq.attachRunnable(uncage_frame, 0, 0, 0, uncaging); // f, p, c, s
 
 acq.attachRunnable(0, 0, 0, 0, runnable); // f, p, c, s
 
