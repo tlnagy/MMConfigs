@@ -8,15 +8,15 @@ acq.clearRunnables();
 settings = acq.getAcquisitionSettings();
 
 // When to uncage in minutes
-uncage_time_mins = 5.0;
+uncage_time_mins = 6;
 uncage_frame = (int) (uncage_time_mins * 60 / (settings.intervalMs / 1000));
 
 // how long to uncage for
-uncaging_length_secs = 10;
+uncaging_length_secs = 12;
 print("Uncaging will happen at frame "+uncage_frame+" for "+uncaging_length_secs + "s ");
 
 port = "COM3";
-dac = "DAC2";
+dac = "TTL2";
 power = 1.0;
 
 // turn off LEDs
@@ -47,6 +47,11 @@ runnable = new Runnable() {
         shutterTracker = new Runnable() {
             public void run() {
                 print("Acquisition started...");
+
+					// open shutter
+					mmc.setShutterOpen("Shutter-A 10-2", true);
+					mmc.unloadDevice("Shutter-A 10-2");
+                
                 global.start_time = System.currentTimeMillis();
                 boolean state = false;
                 global.led_on = 0;
@@ -95,6 +100,16 @@ runnable = new Runnable() {
                 print(timediff + " LEDs were on for " + global.led_on + "ms total");
                 print("Unregistering all runnables");
                 global.mm.acquisitions().clearRunnables();
+
+					 
+                mmc.loadDevice("Shutter-A 10-2", "SutterLambda", "Shutter-A 10-2");
+					 
+					 mmc.setProperty("Shutter-A 10-2", "Port", "COM6");
+					 mmc.setProperty("Core", "Shutter", "Shutter-A 10-2");
+
+					 mmc.initializeDevice("Shutter-A 10-2");
+					 Thread.sleep(2000);
+					 mmc.setShutterOpen("Shutter-A 10-2", false);
             }
         };
 
@@ -104,10 +119,12 @@ runnable = new Runnable() {
 };
 
 
+
 // uncage at the given time point at the first position and first z slice
 acq.attachRunnable(uncage_frame, 0, 0, 0, uncaging); // f, p, c, s
 
 acq.attachRunnable(0, 0, 0, 0, runnable); // f, p, c, s
+
 
 
 message = "\n Taken using runnable:\n    UV exposed at frame #" + uncage_frame;
