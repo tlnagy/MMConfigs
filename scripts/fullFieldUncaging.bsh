@@ -1,3 +1,10 @@
+/*
+ * Full Field Uncaging via Polygon
+ * 
+ * Tamas Nagy, 2020
+ */
+
+
 // load led controls
 addClassPath("C:/Data/tamas/MMConfigs/scripts/");
 importCommands("/");
@@ -58,7 +65,7 @@ runnable = new Runnable() {
                 print("Acquisition started...");
                 
                 global.start_time = System.currentTimeMillis();
-                boolean state = false;
+                String state = "0";
                 global.led_on = 0;
 
                 print("0 Tracking shutters...");
@@ -72,15 +79,16 @@ runnable = new Runnable() {
                     timediff = curr_time - global.start_time;
 
                     // we detect a switch in the shutter state
-                    if (global.shutterManager.getShutter() != state) {
-                        state = !state;
+                    String new_state = mmc.getProperty("Shutter-B 10-2", "State");
+                    if (!new_state.equals(state)) {
+                        state = new_state;
                         howlong = (curr_time - global.lastChange);
                         if (global.current_led_voltage > 0.0) {
                             global.lastChange = curr_time;
                         }
                         
                         // if the shutter just opened, turn off the leds
-                        if (state) {
+                        if (state.equals("1")) {
                             led_control(super.port, super.dac, 0.0, false);
                             if (global.current_led_voltage > 0.0) {
                                 print(timediff + " LEDs were on for " + howlong);
