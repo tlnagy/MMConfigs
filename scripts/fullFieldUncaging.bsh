@@ -19,6 +19,15 @@ port = "COM3";
 dac = "TTL2";
 power = 1.0;
 
+for (device : mmc.getLoadedDevices()) {
+	if (device.equals("Shutter-A 10-2")) {
+		print("Opening and unloading transmitted light shutter...");
+		mmc.setShutterOpen("Shutter-A 10-2", true);
+		mmc.unloadDevice("Shutter-A 10-2");
+		print("Done");
+	}
+}
+
 // turn off LEDs
 led_control(port, dac, 0.0);
 
@@ -47,10 +56,6 @@ runnable = new Runnable() {
         shutterTracker = new Runnable() {
             public void run() {
                 print("Acquisition started...");
-
-					// open shutter
-					mmc.setShutterOpen("Shutter-A 10-2", true);
-					mmc.unloadDevice("Shutter-A 10-2");
                 
                 global.start_time = System.currentTimeMillis();
                 boolean state = false;
