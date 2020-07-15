@@ -15,11 +15,11 @@ acq.clearRunnables();
 settings = acq.getAcquisitionSettings();
 
 // When to uncage in minutes
-uncage_time_mins = 6;
+uncage_time_mins = 3;
 uncage_frame = (int) (uncage_time_mins * 60 / (settings.intervalMs / 1000));
 
 // how long to uncage for
-uncaging_length_secs = 12;
+uncaging_length_secs = 30;
 print("Uncaging will happen at frame "+uncage_frame+" for "+uncaging_length_secs + "s ");
 
 port = "COM3";
@@ -134,7 +134,7 @@ runnable = new Runnable() {
 
 
 // uncage at the given time point at the first position and first z slice
-acq.attachRunnable(uncage_frame, 0, 0, 0, uncaging); // f, p, c, s
+acq.attachRunnable(uncage_frame, -1, 0, 0, uncaging); // f, p, c, s
 
 acq.attachRunnable(0, 0, 0, 0, runnable); // f, p, c, s
 
