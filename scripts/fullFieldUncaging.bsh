@@ -22,18 +22,9 @@ uncage_frame = (int) (uncage_time_mins * 60 / (settings.intervalMs / 1000));
 uncaging_length_secs = 30;
 print("Uncaging will happen at frame "+uncage_frame+" for "+uncaging_length_secs + "s ");
 
-port = "COM3";
-dac = "TTL2";
+port = "COM16"; // triggerscope com port
+dac = "TTL9"; // 365nm LED port
 power = 1.0;
-
-for (device : mmc.getLoadedDevices()) {
-	if (device.equals("Shutter-A 10-2")) {
-		print("Opening and unloading transmitted light shutter...");
-		mmc.setShutterOpen("Shutter-A 10-2", true);
-		mmc.unloadDevice("Shutter-A 10-2");
-		print("Done");
-	}
-}
 
 // turn off LEDs
 led_control(port, dac, 0.0);
@@ -113,16 +104,6 @@ runnable = new Runnable() {
                 print(timediff + " LEDs were on for " + global.led_on + "ms total");
                 print("Unregistering all runnables");
                 global.mm.acquisitions().clearRunnables();
-
-					 
-                mmc.loadDevice("Shutter-A 10-2", "SutterLambda", "Shutter-A 10-2");
-					 
-					 mmc.setProperty("Shutter-A 10-2", "Port", "COM6");
-					 mmc.setProperty("Core", "Shutter", "Shutter-A 10-2");
-
-					 mmc.initializeDevice("Shutter-A 10-2");
-					 Thread.sleep(2000);
-					 mmc.setShutterOpen("Shutter-A 10-2", false);
             }
         };
 
