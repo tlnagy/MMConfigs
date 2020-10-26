@@ -20,7 +20,6 @@ uncage_frame = (int) (uncage_time_mins * 60 / (settings.intervalMs / 1000));
 
 // how long to uncage for
 uncaging_length_secs = 30;
-print("Uncaging will happen at frame "+uncage_frame+" for "+uncaging_length_secs + "s ");
 
 port = "COM16"; // triggerscope com port
 dac = "TTL9"; // 365nm LED port
@@ -31,6 +30,12 @@ led_control(port, dac, 0.0);
 
 long start_time = 0;
 long led_start_time = -1000000;
+
+
+/*
+ * Runnable for turning on LEDs when `uncage_frame` is reached and until `uncaging_length_secs` 
+ * is reached.
+ */
 
 uncaging = new Runnable() {
     int count = 0;
@@ -48,6 +53,14 @@ num_channels = settings.channels.size();
 shutterManager = mm.getShutterManager();
 
 long led_on = 0;
+
+target_shutter = "Shutter-B 10-2";
+
+/*
+ * Runnable for tracking synchronized shutter state. Whenever `target_shutter` is on, this 
+ * runnable shuts off the LEDs and then returns them to their original state when the
+ * `target_shutter` closes again.
+ */
 
 runnable = new Runnable() {
     public void run() { 
@@ -70,7 +83,7 @@ runnable = new Runnable() {
                     timediff = curr_time - global.start_time;
 
                     // we detect a switch in the shutter state
-                    String new_state = mmc.getProperty("Shutter-B 10-2", "State");
+                    String new_state = mmc.getProperty(global.target_shutter, "State");
                     if (!new_state.equals(state)) {
                         state = new_state;
                         howlong = (curr_time - global.lastChange);
@@ -115,7 +128,20 @@ runnable = new Runnable() {
 
 
 // uncage at the given time point at the first position and first z slice
-acq.attachRunnable(uncage_frame, -1, 0, 0, uncaging); // f, p, c, s
+
+f = uncage_frame;
+p = -1;
+c = 0;
+s = 0;
+
+acq.attachRunnable(f, p, c, s, uncaging); // f, p, c, s
+
+print("Uncaging will happen at frame "+uncage_frame+" for "+uncaging_length_secs + "s ");
+if (p == -1) {
+	print("Uncaging will happen at each position");
+} else {
+	println("Uncaging will only happen at position " + p);
+}
 
 acq.attachRunnable(0, 0, 0, 0, runnable); // f, p, c, s
 
