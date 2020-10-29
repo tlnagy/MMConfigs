@@ -140,7 +140,7 @@ print("Uncaging will happen at frame "+uncage_frame+" for "+uncaging_length_secs
 if (p == -1) {
 	print("Uncaging will happen at each position");
 } else {
-	println("Uncaging will only happen at position " + p);
+	print("Uncaging will only happen at position " + p);
 }
 
 acq.attachRunnable(0, 0, 0, 0, runnable); // f, p, c, s
